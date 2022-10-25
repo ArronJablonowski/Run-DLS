@@ -15,6 +15,10 @@ Run-DLS can assist in finding file continaing:
   * etc.
 
 Example Usage: 
+* In Scrip Documentation, Examples, & Get Help 
+```
+Get-Help .\Run-DLS.ps1 -Examples
+```
 * Find Filenames containing Password Key Terms
 ```
 .\Run-DLS.ps1 -Filename_Terms_Passwords
