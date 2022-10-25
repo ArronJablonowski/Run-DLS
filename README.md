@@ -13,7 +13,7 @@ Run-DLS can assist in finding:
   * Emails
   * PCAPs
   * SSNs
-  * & more. (see help) 
+  * & more. (see get-help) 
 
 ## Example Usage 
 In script documentation, examples, & Get Help:
