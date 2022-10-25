@@ -15,7 +15,7 @@ Run-DLS can assist in finding files continaing:
   * etc.
 
 Example Usage: 
-* In Scrip Documentation, Examples, & Get Help 
+* In Script Documentation, Examples, & Get Help 
 ```
 Get-Help .\Run-DLS.ps1 -Examples
 ```
