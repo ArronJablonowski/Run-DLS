@@ -20,12 +20,12 @@ In script documentation, examples, & Get Help
 ```Powershell
 Get-Help .\Run-DLS.ps1
 ```
-```
+```Powershell
 Get-Help .\Run-DLS.ps1 -Examples
 ```
 
 Find file names containing Password key terms (by default the script with search your User folder) 
-```
+```Powershell
 .\Run-DLS.ps1 -Filename_Terms_Passwords
 ```
 
