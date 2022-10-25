@@ -1,4 +1,5 @@
-# Run-DLS
+Run-DLS
+=======
 Run-DLS (Run Data Locator Script) is a Powershell script to help locate files containing sensitive data by analyzing file names and using RegEx to analyze file content. 
 
 Run-DLS can assist in finding: 
@@ -14,7 +15,7 @@ Run-DLS can assist in finding:
   * SSNs
   * etc.
 
-## Example Usage: 
+### Example Usage: 
 * In script documentation, examples, & Get Help 
 ```
 Get-Help .\Run-DLS.ps1
