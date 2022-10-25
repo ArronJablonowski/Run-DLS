@@ -9,7 +9,7 @@ Powershell script to help locate files containing sensitive data such as
   * Data Bases
   * Emails
   * PCAPs
-  * SSns
+  * SSNs
   * etc.
 
 Usage: 
