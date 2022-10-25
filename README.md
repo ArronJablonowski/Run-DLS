@@ -17,7 +17,7 @@ Run-DLS can assist in finding:
 
 ## Example Usage: 
 In script documentation, examples, & Get Help 
-```
+```Powershell
 Get-Help .\Run-DLS.ps1
 ```
 ```
