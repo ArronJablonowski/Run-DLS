@@ -15,8 +15,8 @@ Run-DLS can assist in finding:
   * SSNs
   * etc.
 
-## Example Usage: 
-In script documentation, examples, & Get Help 
+## Example Usage 
+In script documentation, examples, & Get Help:
 ```Powershell
 Get-Help .\Run-DLS.ps1
 ```
@@ -24,17 +24,15 @@ Get-Help .\Run-DLS.ps1
 Get-Help .\Run-DLS.ps1 -Examples
 ```
 
-Find file names containing Password key terms (by default the script with search your User folder) 
+Find file names containing Password key terms (by default the script with search your User folder):
 ```Powershell
 .\Run-DLS.ps1 -Filename_Terms_Passwords
 ```
 
-Set the SearchPath to search all user directories 
+Set the SearchPath to a target directory or share: 
 ```Powershell
 .\Run-DLS.ps1 -Filename_Terms_Passwords -SearchPath C:\Users\
 ```
-
-Set the SearchPath to a file share path 
 ```Powershell
 .\Run-DLS.ps1 -Filename_Terms_Passwords -SearchPath \\HostName\C$\Users\
 ```
