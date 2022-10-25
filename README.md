@@ -26,7 +26,7 @@ Get-Help .\Run-DLS.ps1 -Examples
 
 Find file names containing Password key terms (by default the script with search your User folder) 
 ```Powershell
-Run-DLS.ps1 -Filename_Terms_Passwords
+.\Run-DLS.ps1 -Filename_Terms_Passwords
 ```
 
 Set the SearchPath to search all user directories 
