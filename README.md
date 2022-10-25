@@ -30,14 +30,14 @@ Find file names containing Password key terms (by default the script with search
 ```
 
 Set the SearchPath to search all user directories 
-```
+```Powershell
 .\Run-DLS.ps1 -Filename_Terms_Passwords -SearchPath <C:\Users\>]
 ```
 
 Set the SearchPath to a file share path 
-```
+```Powershell
 .\Run-DLS.ps1 -Filename_Terms_Passwords -SearchPath \\HostName\C$\Users\
 ```
-```
+```Powershell
 .\Run-DLS.ps1 -Filename_Terms_Passwords -SearchPath \\ServerName\SMB_Share\Path\
 ```
