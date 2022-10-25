@@ -14,8 +14,11 @@ Run-DLS can assist in finding:
   * SSNs
   * etc.
 
-Example Usage: 
+## Example Usage: 
 * In script documentation, examples, & Get Help 
+```
+Get-Help .\Run-DLS.ps1
+```
 ```
 Get-Help .\Run-DLS.ps1 -Examples
 ```
