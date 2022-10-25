@@ -19,16 +19,18 @@ Example Usage:
 ```
 Get-Help .\Run-DLS.ps1 -Examples
 ```
-* Find file names containing Password key terms
+* Find file names containing Password key terms (by default the script with search your User folder) 
 ```
 .\Run-DLS.ps1 -Filename_Terms_Passwords
 ```
+* Set the SearchPath to search all user directories 
 ```
-.\Run-DLS.ps1 -Filename_Terms_Passwords [-SearchPath <C:\Users\>]
+.\Run-DLS.ps1 -Filename_Terms_Passwords -SearchPath <C:\Users\>]
+```
+* Set the SearchPath to a file share path 
+```
+.\Run-DLS.ps1 -Filename_Terms_Passwords -SearchPath \\HostName\C$\Users\
 ```
 ```
-.\Run-DLS.ps1 -Filename_Terms_Passwords [-SearchPath <\\HostName\C$\Users\>]
-```
-```
-.\Run-DLS.ps1 -Filename_Terms_Passwords [-SearchPath <\\ServerName\SMB_Share\Path\">]
+.\Run-DLS.ps1 -Filename_Terms_Passwords -SearchPath \\ServerName\SMB_Share\Path\
 ```
