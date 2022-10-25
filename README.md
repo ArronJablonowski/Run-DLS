@@ -8,7 +8,7 @@ Run-DLS can assist in finding file continaing:
   * Backups and Archives
   * Identifications
   * Source Code 
-  * Data Bases
+  * Databases
   * Emails
   * PCAPs
   * SSNs
