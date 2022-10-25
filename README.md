@@ -15,11 +15,11 @@ Run-DLS can assist in finding files continaing:
   * etc.
 
 Example Usage: 
-* In Script Documentation, Examples, & Get Help 
+* In script documentation, examples, & Get Help 
 ```
 Get-Help .\Run-DLS.ps1 -Examples
 ```
-* Find Filenames containing Password Key Terms
+* Find file names containing Password key terms
 ```
 .\Run-DLS.ps1 -Filename_Terms_Passwords
 ```
