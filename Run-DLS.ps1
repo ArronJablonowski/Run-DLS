@@ -12,7 +12,7 @@
     PS> .\Run-DLS.ps1 -Filename_Terms_Passwords
     PS> .\Run-DLS.ps1 -Filename_Terms_Passwords [-SearchPath <C:\Users\>]
     PS> .\Run-DLS.ps1 -Filename_Terms_Passwords [-SearchPath <\\HostName\C$\Users\>]
-    PS> .\Run-DLS.ps1 -Filename_Terms_Passwords [-SearchPath <\\ServerName\SMB_Share\Path\">]
+    PS> .\Run-DLS.ps1 -Filename_Terms_Passwords [-SearchPath <"\\ServerName\SMB_Share\Path\">]
 
 .EXAMPLE
     Switches for Finding Filename Key Terms:
@@ -44,6 +44,8 @@
     PS> .\Run-DLS.ps1 -Find_SSNs_in_Files [-SearchPath <Path>]
     PS> .\Run-DLS.ps1 -Find_Passwords_in_Files [-SearchPath <Path>]
     PS> .\Run-DLS.ps1 -Find_Card_Numbers_in_Files [-SearchPath <Path>]
+    PS> .\Run-DLS.ps1 -Find_Email_Addresses_in_Files [-SearchPath <Path>]
+
 
 .EXAMPLE
     Switch to Delete results (.csv) files 
@@ -131,6 +133,8 @@ Param (
     [switch]$Find_Card_Numbers_in_Files,             # Card Numbers in Files 
     [Parameter(Mandatory=$false)]
     [switch]$Find_SSNs_in_Files,                     # SSN in Files 
+    [Parameter(Mandatory=$false)]
+    [switch]$Find_Email_Addresses_in_Files,          # Find Email Addresses 
 
     ### SCRIPT OPTIONS ###
     [Parameter(Mandatory=$false)]    
@@ -141,11 +145,16 @@ Param (
     [switch]$List_Attached_Storage                   # List Mounted Drives, File Shares, & File Storage Locations 
 )
 
+# Limit Output File Size - Change as needed 
+$limitOutputFileSize = '30mb'  # attempt to limit file size - IF one file contains a lot of information, the limit will be exceeded. 
+
 # Set Error Action 
 $erroractionpref = "SilentlyContinue"
 
 # Controls the ending message to user - If work has been done = 1 / No work done = 0 
 $workdone = 0
+
+$outputFile
 
 # Terms to Search for in File Names (uses Where-Object $_.name -match $patternFileNames)
 # ======================================================================================
@@ -158,7 +167,8 @@ $patternFileNamesSSNs = "social security|socialsecurity|social_security|social-s
 # IDs
 $patternFileNamesIDs = "passport|pass port|pass-port|pass_port|Drivers_License|Drivers-License|Driver License|Drivers License|DriversLicense|DriverLicense|badge|CorpID|CorporateID|Identification"
 # Terms of Interest 
-$patternFileNamesOfInterest = "confidential|secret|private|w2|w-2|w_2|w4|w-4|w_4|1099|bank|routing|earnings|profit|loss|income|pay|cash|budget|balance|insurance|insure|cyber|Policy|PCI|OfferLeter|Offer_letter|Offer-letter|Offer Letter|customer|resume|covid|severance|salary|terminated|reconciliation"
+#$patternFileNamesOfInterest = "confidential|secret|private|w2|w-2|w_2|w4|w-4|w_4|1099|bank|routing|earnings|profit|loss|income|pay|cash|budget|balance|insurance|insure|cyber|Policy|PCI|OfferLeter|Offer_letter|Offer-letter|Offer Letter|customer|rewards|resume|covid|severance|salary|terminated|reconciliation"
+$patternFileNamesOfInterest = "customer|loyalty|reward|email"
 # Schematics Key Terms 
 $patternFileNamesSchematics = "diagram|schematic|sitemap|site map|data flow|dataflow|backup|layout"
 # Network Document Key Terms 
@@ -247,6 +257,24 @@ $patternSSN = @(
     # 'social_security'
 )
 
+$patternEmailAddress = @(
+    # Basic regex for standard email addresses (this will ommit emails with special characters and IP addresses) 
+    '^([\w-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([\w-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$',
+    '\w+@\w+\.\w+|\w+\.\w+@\w+\.\w+\.\w+',
+    # List of email domains to look for: 
+    '@gmail.com',
+    '@yahoo',
+    '@yandex.ru', 
+    '@aol.com', 
+    '@hotmail.com',
+    '@live.com',
+    '@outlook.com',
+    '@msn.com', 
+    '@att.net',
+    '@facebook.com',
+    '@earthlink.net'
+)
+
 # Create Output File Names 
 # ========================
 # get host name for output file's name 
@@ -299,6 +327,12 @@ $outputPasswordFiles = "$outputFilePathHost`_Potential_Password_Files.csv"
 $outputCardNumberFiles = "$outputFilePathHost`_Potential_CardData_Files.csv"
 # SSNs in file content 
 $outputSSNFiles = "$outputFilePathHost`_Potential_SSN_Files.csv"
+# Email Addresses in file content (multiple output files due to verbosity of reporting)
+$outputEmailAddressTxtFiles = "$outputFilePathHost`_Potential_Email_Addr_TxtFiles.csv"
+$outputEmailAddressDocXlsFiles = "$outputFilePathHost`_Potential_Email_Addr_DocXlsFiles.csv"
+$outputEmailAddressXlsxFiles = "$outputFilePathHost`_Potential_Email_Addr_XlsxFiles.csv"
+$outputEmailAddressDocxFiles = "$outputFilePathHost`_Potential_Email_Addr_DocxFiles.csv"
+$outputEmailAddressPdfFiles = "$outputFilePathHost`_Potential_Email_Addr_PdfFiles.csv"
 
 # EXCLUDE FILEs - Don't Read these files - Add any additional exclusions to this list. 
 # =====================================================================================
@@ -326,6 +360,7 @@ $excludeFiles = @(
     "$outputPasswordFiles",
     "$outputCardNumberFiles",
     "$outputSSNFiles",
+    "$outputEmailAddressFiles",
     # Additional Exclusions: 
     '*_SomeFileIDontWantToSee.csv'
 )
@@ -358,6 +393,58 @@ function LuhnCheck($number) {
     }
 }
 
+function removeNumberFromEndOfFileName($baseFileName){ 
+    # Strip up to 5 #s from end of file name 
+    if(($baseFileName.substring($baseFileName.length - 5)) -match "^\d+$"){ # If the last chars are an int (#)
+         # Remove the last 5 Chars (#) from the basename 
+         $newFileName = $baseFileName.Substring(0,$baseFileName.Length-5)
+         return $newFileName
+    }elseif(($baseFileName.substring($baseFileName.length - 4)) -match "^\d+$"){ # If the last chars are an int (#)
+         # Remove the last 4 Chars (#) from the basename 
+         $newFileName = $baseFileName.Substring(0,$baseFileName.Length-4)
+         return $newFileName
+    }elseif(($baseFileName.substring($baseFileName.length - 3)) -match "^\d+$"){ # If the last chars are an int (#)
+         # Remove the last 3 Chars (#) from the basename 
+         $newFileName = $baseFileName.Substring(0,$baseFileName.Length-3)
+         return $newFileName
+    }elseif(($baseFileName.substring($baseFileName.length - 2)) -match "^\d+$"){ # If the last chars are an int (#)
+         # Remove the last 2 Chars (#) from the basename 
+         $newFileName = $baseFileName.Substring(0,$baseFileName.Length-2)
+         return $newFileName
+    }elseif(($baseFileName.substring($baseFileName.length - 1)) -match "^\d+$"){ # If the last chars are an int (#)
+         # Remove the last Char (#) from the basename 
+         $newFileName = $baseFileName.Substring(0,$baseFileName.Length-1)
+         return $newFileName
+    }else{
+        # Else return the file name as is - because no numbers need removing from end of filename  
+         return $baseFileName
+    }
+
+}
+
+function changeOutputFileName($inputFilePathName) {
+    Write-Host "     -- OUTPUT FILE HAS EXCEEDED THE SIZE LIMIT "
+    $filesFullPath = Get-ChildItem $inputFilePathName # get the full path of the output file 
+    $baseName = $filesFullPath.BaseName # Base name without extension 
+    $extension = $filesFullPath.Extension # extension With '.'
+
+    # Send $basename to function to remove any numbers from end of filename 
+    $baseName = removeNumberFromEndOfFileName $baseName
+
+    for ($i = 1 ; $i -le 99999 ; $i++){   
+        #Append number to filename
+        $newFileName = $baseName+"$i"+$extension 
+        # Test if file exists in loop. 
+        If(!(test-path "$PSScriptRoot\$newFileName")){
+            Write-Host "     -- WRITING TO NEW OUTPUT FILE : $newFileName "
+           # Write-Host "$PSScriptRoot\$newFileName"
+            return "$PSScriptRoot\$newFileName"
+
+        }
+    }
+
+}
+
 #========================#
 # FUCTIONS TO READ FILES #
 #========================#
@@ -366,7 +453,17 @@ function LuhnCheck($number) {
 #==============================
 function searchTextFiles($pattern, $search_Path, $outputFile, $Luhn) {
     Get-ChildItem -Recurse -file -path $search_Path -Include *.txt, *.csv -Exclude $excludeFiles -ErrorAction $erroractionpref | 
-    ForEach-Object { Select-String -pattern $pattern -Path $PSItem.FullName | 
+    ForEach-Object {         
+       # Check output file size, and call 'changeOutputFileName' if larget than X ($limitOutputFileSize - file size limit set at top of script)
+        If (Test-Path $outputFile) { # If File Output File Exists 
+            If ((Get-Item $outputFile).length -gt $limitOutputFileSize) { # If Output lile larger than X 
+                # Chnage the outputfile's name - append a # to the name 
+                $newOutputFile = changeOutputFileName $outputFile 
+                $outputFile = $newOutputFile
+            }
+        }
+
+        Select-String -pattern $pattern -Path $PSItem.FullName | 
         ForEach-Object { 
                 # Build UNC Path 
                 $uncpath = "\\"+$PSItem.Path   # File's full path 
@@ -398,16 +495,26 @@ function searchTextFiles($pattern, $search_Path, $outputFile, $Luhn) {
                     @{Name = 'HostName';Expression = {$env:COMPUTERNAME }},
                     @{Name = 'UNCpath';Expression = {$uncpath}} 
                 }    
-        }
-    } | Export-Csv -Path $outputFile -NoTypeInformation -Append  
+        } | Export-Csv -Path $outputFile -NoTypeInformation -Append
+    }   
 }
 
 # Script Files - .ps1, .cmd, .bat, .batch, .vbs, .py, .sh, *.rb
 #==============================================================
 function searchScriptFiles($pattern, $search_Path, $outputFile, $Luhn) {
     Get-ChildItem -Recurse -file -path $search_Path -Include *.ps1, *.cmd, *.bat, *.batch, *.vbs, *.py, *.sh, *.rb -Exclude $excludeFiles -ErrorAction $erroractionpref | 
-    ForEach-Object { Select-String -pattern $pattern -Path $PSItem.FullName | 
-        ForEach-Object { 
+    ForEach-Object { 
+        # Check output file size, and call 'changeOutputFileName' if larget than X ($limitOutputFileSize - file size limit set at top of script)
+        If (Test-Path $outputFile) { # If File Output File Exists 
+            If ((Get-Item $outputFile).length -gt $limitOutputFileSize) { # If Output lile larger than X 
+                # Chnage the outputfile's name - append a # to the name 
+                $newOutputFile = changeOutputFileName $outputFile 
+                $outputFile = $newOutputFile
+            }
+        }
+        
+        Select-String -pattern $pattern -Path $PSItem.FullName | 
+        ForEach-Object {
                 # Build UNC Path 
                 $uncpath = "\\"+$PSItem.Path   # File's full path 
                 # $uncpath = $uncpath.Replace(':','$')                 # Replace ':' with '$' to format the unc path   
@@ -438,15 +545,25 @@ function searchScriptFiles($pattern, $search_Path, $outputFile, $Luhn) {
                     @{Name = 'HostName';Expression = {$env:COMPUTERNAME }},
                     @{Name = 'UNCpath';Expression = {$uncpath}} 
                 }    
-        }
-    } | Export-Csv -Path $outputFile -NoTypeInformation -Append  
+        } | Export-Csv -Path $outputFile -NoTypeInformation -Append
+    } # | Export-Csv -Path $outputFile -NoTypeInformation -Append  
 }
 
 # Script Config Files - .conf, .config, .ini, .xml, .json 
 #========================================================
 function searchScriptConfigFiles($pattern, $search_Path, $outputFile, $Luhn) {
     Get-ChildItem -Recurse -file -path $search_Path -Include *.conf, *.config, *.ini, *.xml, *.json -Exclude $excludeFiles -ErrorAction $erroractionpref | 
-    ForEach-Object { Select-String -pattern $pattern -Path $PSItem.FullName | 
+    ForEach-Object {
+        # Check output file size, and call 'changeOutputFileName' if larget than X ($limitOutputFileSize - file size limit set at top of script)
+        If (Test-Path $outputFile) { # If File Output File Exists 
+            If ((Get-Item $outputFile).length -gt $limitOutputFileSize) { # If Output lile larger than X 
+                # Chnage the outputfile's name - append a # to the name 
+                $newOutputFile = changeOutputFileName $outputFile 
+                $outputFile = $newOutputFile
+            }
+        }
+        
+        Select-String -pattern $pattern -Path $PSItem.FullName | 
         ForEach-Object { 
                 # Build UNC Path 
                 $uncpath = "\\"+$PSItem.Path   # File's full path
@@ -478,15 +595,25 @@ function searchScriptConfigFiles($pattern, $search_Path, $outputFile, $Luhn) {
                     @{Name = 'HostName';Expression = {$env:COMPUTERNAME }},
                     @{Name = 'UNCpath';Expression = {$uncpath}} 
                 }    
-        }
-    } | Export-Csv -Path $outputFile -NoTypeInformation -Append  
+        } | Export-Csv -Path $outputFile -NoTypeInformation -Append
+    } # | Export-Csv -Path $outputFile -NoTypeInformation -Append  
 }
 
 # OLD MS OFFICE Formats - .doc & .xls 
 #====================================
 function searchDocXlsFiles($pattern, $search_Path, $outputFile, $Luhn) {
     Get-ChildItem -Recurse -file -path $search_Path -Include *.doc, *.xls -Exclude $excludeFiles -ErrorAction $erroractionpref | 
-    ForEach-Object { Select-String -pattern $pattern -Path $PSItem.FullName | 
+    ForEach-Object { 
+        # Check output file size, and call 'changeOutputFileName' if larget than X ($limitOutputFileSize - file size limit set at top of script)
+        If (Test-Path $outputFile) { # If File Output File Exists 
+            If ((Get-Item $outputFile).length -gt $limitOutputFileSize) { # If Output lile larger than X 
+                # Chnage the outputfile's name - append a # to the name 
+                $newOutputFile = changeOutputFileName $outputFile 
+                $outputFile = $newOutputFile
+            }
+        }
+        
+        Select-String -pattern $pattern -Path $PSItem.FullName | 
         ForEach-Object { 
                 #Build UNC Path 
                 $uncpath = "\\"+$PSItem.Path   # File's full path
@@ -517,8 +644,8 @@ function searchDocXlsFiles($pattern, $search_Path, $outputFile, $Luhn) {
                     @{Name = 'HostName';Expression = {$env:COMPUTERNAME }},                    
                     @{Name = 'UNCpath';Expression = {$uncpath}}  
                 }
-        }           
-    } | Export-Csv -Path $outputFile -NoTypeInformation -Append          
+        }   | Export-Csv -Path $outputFile -NoTypeInformation -Append        
+    } # | Export-Csv -Path $outputFile -NoTypeInformation -Append          
 }
 
 # WORD - .docx 
@@ -526,6 +653,15 @@ function searchDocXlsFiles($pattern, $search_Path, $outputFile, $Luhn) {
 function searchWordFiles($pattern, $search_Path, $outputFile, $Luhn) {
     Get-ChildItem -Recurse -file -Path $search_Path -Include *.docx -Exclude $excludeFiles -ErrorAction $erroractionpref | 
         ForEach-Object {
+            # Check output file size, and call 'changeOutputFileName' if larget than X ($limitOutputFileSize - file size limit set at top of script)
+            If (Test-Path $outputFile) { # If File Output File Exists 
+                If ((Get-Item $outputFile).length -gt $limitOutputFileSize) { # If Output lile larger than X 
+                    # Chnage the outputfile's name - append a # to the name 
+                    $newOutputFile = changeOutputFileName $outputFile 
+                    $outputFile = $newOutputFile
+                }
+            }
+
             $fullPath = $_.FullName
             $filename = $_.Name
             $unzippedPath = "$env:temp\unzipped" # Where to expand/extract the Xlsx files into xml files 
@@ -548,7 +684,7 @@ function searchWordFiles($pattern, $search_Path, $outputFile, $Luhn) {
                 ForEach-Object {                     
                     if ($Luhn -eq $true ){ 
                             if (LuhnCheck($PSItem.Matches).Value -eq $true){  #Only report card numbers that pass the Luhn Check 
-                                Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$_.Fullname}},
+                                Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$fullPath}},
                                 @{Name = 'Filename';Expression = {$filename}},
                                 @{Name = 'MatchedExpression';Expression = {("`` "+$_.Matches)}},
                                 @{Name = 'PassedLuhnCheck';Expression = {(LuhnCheck($PSItem.Matches).Value)}},
@@ -562,7 +698,7 @@ function searchWordFiles($pattern, $search_Path, $outputFile, $Luhn) {
                             }
                     }
                     else {
-                        Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$_.Fullname}},  
+                        Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$fullPath}},  
                             @{Name = 'Filename';Expression = {$filename}},
                             @{Name = 'MatchedExpression';Expression = {("`` "+$_.Matches)}},
                             @{Name = 'BaseName';Expression = {(Get-ChildItem -Path $fullPath).BaseName}},
@@ -573,11 +709,11 @@ function searchWordFiles($pattern, $search_Path, $outputFile, $Luhn) {
                             @{Name = 'HostName';Expression = {$env:COMPUTERNAME }},                              
                             @{Name = 'UNCpath';Expression = {$uncpath}} 
                     }
-                }
+                } | Export-Csv -Path $outputFile -NoTypeInformation -Append
            }
             #Clean up when done. 
             remove-item -Path "$unzippedPath\*" -Recurse -Force
-    } | Export-Csv -Path $outputFile -NoTypeInformation -Append    
+    } # | Export-Csv -Path $outputFile -NoTypeInformation -Append    
 }
 
 # Excel - .xlsx 
@@ -585,6 +721,15 @@ function searchWordFiles($pattern, $search_Path, $outputFile, $Luhn) {
 function searchExcelFiles($pattern, $search_Path, $outputFile, $Luhn) {
     Get-ChildItem -Recurse -file -Path $search_Path -Include *.xlsx -Exclude $excludeFiles -ErrorAction $erroractionpref | 
     ForEach-Object {
+        # Check output file size, and call 'changeOutputFileName' if larget than X ($limitOutputFileSize - file size limit set at top of script)
+        If (Test-Path $outputFile) { # If File Output File Exists 
+            If ((Get-Item $outputFile).length -gt $limitOutputFileSize) { # If Output lile larger than X 
+                # Chnage the outputfile's name - append a # to the name 
+                $newOutputFile = changeOutputFileName $outputFile 
+                $outputFile = $newOutputFile
+            }
+        }
+
         $fullPath = $_.FullName
         $filename = $_.Name
         $unzippedPath = "$env:temp\unzipped" # Where to expand/extract the Xlsx files into xml files 
@@ -606,7 +751,7 @@ function searchExcelFiles($pattern, $search_Path, $outputFile, $Luhn) {
             ForEach-Object { 
                 if ($Luhn -eq $true ){ 
                     if (LuhnCheck($PSItem.Matches).Value -eq $true){  #Only report card numbers that pass the Luhn Check 
-                        Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$_.Fullname}},  
+                        Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$fullPath}},  
                         @{Name = 'Filename';Expression = {$filename}},
                         @{Name = 'MatchedExpression';Expression = {("``  "+$_.Matches)}},
                         @{Name = 'PassedLuhnCheck';Expression = {(LuhnCheck($PSItem.Matches).Value)}},
@@ -620,7 +765,7 @@ function searchExcelFiles($pattern, $search_Path, $outputFile, $Luhn) {
                     }
                 }
                 else {
-                    Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$_.Fullname}},  
+                    Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$fullPath}},  
                     @{Name = 'Filename';Expression = {$filename}},
                     @{Name = 'MatchedExpression';Expression = {("``  "+$_.Matches)}},
                     @{Name = 'BaseName';Expression = {(Get-ChildItem -Path $fullPath).BaseName}},
@@ -631,10 +776,10 @@ function searchExcelFiles($pattern, $search_Path, $outputFile, $Luhn) {
                     @{Name = 'HostName';Expression = {$env:COMPUTERNAME }},                      
                     @{Name = 'UNCpath';Expression = {$uncpath}}
                 }
-            }
+            } | Export-Csv -Path $outputFile -NoTypeInformation -Append
         }
         remove-item -Path "$unzippedPath\*" -Recurse -Force
-    } | Export-Csv -Path $outputFile -NoTypeInformation -Append
+    } # | Export-Csv -Path $outputFile -NoTypeInformation -Append
 }
 
 # PDF Files - .pdf
@@ -642,6 +787,15 @@ function searchExcelFiles($pattern, $search_Path, $outputFile, $Luhn) {
 function searchPdfFiles($pattern, $search_Path, $outputFile, $Luhn) {
     Get-ChildItem -Recurse -file -Path $search_Path -Include *.pdf -Exclude $excludeFiles -ErrorAction $erroractionpref | 
     ForEach-Object {
+        # Check output file size, and call 'changeOutputFileName' if larget than X ($limitOutputFileSize - file size limit set at top of script)
+        If (Test-Path $outputFile) { # If File Output File Exists 
+            If ((Get-Item $outputFile).length -gt $limitOutputFileSize) { # If Output lile larger than X 
+                # Chnage the outputfile's name - append a # to the name 
+                $newOutputFile = changeOutputFileName $outputFile 
+                $outputFile = $newOutputFile
+            }
+        }
+
         $fullPath = $_.FullName
         $filename = $_.Name
         $unzippedPath = "$env:temp\unzipped"
@@ -660,7 +814,7 @@ function searchPdfFiles($pattern, $search_Path, $outputFile, $Luhn) {
             ForEach-Object { 
                 if ($Luhn -eq $true ){    
                     if (LuhnCheck($PSItem.Matches).Value -eq $true){  #Only report card numbers that pass the Luhn Check 
-                        Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$_.Fullname}},   
+                        Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$fullPath}},   
                         @{Name = 'Filename';Expression = {$filename}},
                         @{Name = 'MatchedExpression';Expression = {("``  "+$_.Matches)}},
                         @{Name = 'PassedLuhnCheck';Expression = {(LuhnCheck($PSItem.Matches).Value)}},
@@ -674,7 +828,7 @@ function searchPdfFiles($pattern, $search_Path, $outputFile, $Luhn) {
                     }
                 }
                 else {
-                    Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$_.Fullname}}, 
+                    Select-Object -InputObject $_ -Property @{Name = 'Path';Expression = {$fullPath}}, 
                         @{Name = 'Filename';Expression = {$filename}},
                         @{Name = 'MatchedExpression';Expression = {("``  "+$_.Matches)}},
                         @{Name = 'BaseName';Expression = {(Get-ChildItem -Path $fullPath).BaseName}},
@@ -685,10 +839,10 @@ function searchPdfFiles($pattern, $search_Path, $outputFile, $Luhn) {
                         @{Name = 'HostName';Expression = {$env:COMPUTERNAME }},  
                         @{Name = 'UNCpath';Expression = {$uncpath}}
                 }
-            }
+            } | Export-Csv -Path $outputFile -NoTypeInformation -Append
         }
         remove-item -Path "$unzippedPath\*" -Recurse -Force
-    } | Export-Csv -Path $outputFile -NoTypeInformation -Append
+    } 
 }
 
 # Search Filenames for Terms
@@ -1132,6 +1286,33 @@ if($Find_SSNs_in_Files){
     searchPdfFiles $patternSSN $search_Path $outputSSNFiles $Luhn
     # Complete 
     Write-Host "  - SOCIAL SECURITY NUMBERS : SEARCH COMPLETE "
+    $workdone = 1
+}
+
+# Switch for Email Addresses   
+if($Find_Email_Addresses_in_Files){
+    Write-Host ""
+    Write-Host "Searching - $search_Path"
+    Write-Host "Analyzing File Content for Potential Email Addresses. Please wait..."   
+    # Luhn Check - for CC #s
+    $Luhn = $false
+    # Search Text files
+    Write-Host "  - EMAIL ADDRESSES : Text " 
+    searchTextFiles $patternEmailAddress $search_Path $outputEmailAddressTxtFiles $Luhn
+    # Search Old Office Docs 
+    Write-Host "  - EMAIL ADDRESSES : Doc, Xls "
+    searchDocXlsFiles $patternEmailAddress $search_Path $outputEmailAddressDocXlsFiles $Luhn
+    # Search docx files 
+   # Write-Host "  - EMAIL ADDRESSES : Docx "
+   # searchWordFiles $patternEmailAddress $search_Path $outputEmailAddressDocxFiles $Luhn
+    # Search xlsx files 
+    Write-Host "  - EMAIL ADDRESSES : Xlsx "
+    searchExcelFiles $patternEmailAddress $search_Path $outputEmailAddressXlsxFiles $Luhn
+    # Search pdf files 
+   # Write-Host "  - EMAIL ADDRESSES : Pdf "
+   # searchPdfFiles $patternEmailAddress $search_Path $outputEmailAddressPdfFiles $Luhn
+    # Complete 
+    Write-Host "  - EMAIL ADDRESSES : SEARCH COMPLETE "
     $workdone = 1
 }
 
