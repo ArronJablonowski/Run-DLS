@@ -1,4 +1,5 @@
-# Run-DLS: Locate Files Containing Sensitive Data
+# Run-DLS.ps1
+Locate Files Containing Sensitive Data
 
 **Run-DLS (Run Data Locator Script)** is a powerful PowerShell script designed to help you locate files containing sensitive data by analyzing file names and using regular 
 expressions (RegEx) to examine file contents. This tool can assist in identifying various types of sensitive information, including passwords, credit card numbers, encryption 
