@@ -56,10 +56,6 @@ or specifically for examples:
 ```powershell
 Get-Help .\Run-DLS.ps1 -Examples
 ```
-Find files containing Password key terms (by default the script with search your User folder):
-```Powershell
-.\Run-DLS.ps1 -Filename_Terms_Passwords -Find_Passwords_in_Files
-```
 Set the `-SearchPath` to a target directory or share: 
 ```Powershell
 .\Run-DLS.ps1 -Filename_Terms_CardNumbers -Find_Card_Numbers_in_Files -SearchPath C:\Users\
