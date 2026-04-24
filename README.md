@@ -15,7 +15,7 @@ keys, backups, archives, identification documents, source code, databases, email
 ## Example Usage
 
 ### Finding Files Containing Password Key Terms
-By default, the script searches your user folder for files containing password-related terms:
+By default, the script searches your user folder:
 ```powershell
 .\Run-DLS.ps1 -Filename_Terms_Passwords -Find_Passwords_in_Files
 ```
